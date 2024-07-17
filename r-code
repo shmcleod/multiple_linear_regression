@@ -1,0 +1,535 @@
+# Packages that will be used for regression:
+
+library(tidyverse)
+library(dplyr)
+library(plyr)
+library(readr)
+library(ggplot2)
+library(gridExtra)
+library(stats)
+library(gplots)
+
+install.packages(gridExtra)
+
+# Setting the working directory:
+
+setwd('C:/Users/D208/Datasets/Churn')
+
+# Importing the dataset:
+
+churn_df <-read.csv('churn_data.csv')
+
+# Checking the structure of the data:
+
+str(churn_df)
+
+# Renaming the dataset:
+
+mydata <- churn_df
+
+# Summary/Structure of Data
+
+str(mydata)
+
+summary(mydata)
+
+head(mydata$Outage_sec_perweek)
+
+
+# Searching for Duplicates
+
+dupes <- duplicated(mydata)
+
+# Summing to see if duplicates are present:
+
+sum(dupes)
+
+
+# Listing columns to be removed as they are not meaningful:
+columns_to_remove <- c('CaseOrder', 'Customer_id', 'Interaction', 'UID', 'City', 
+                       'State', 'County', 'Zip', 'Lat', 'Lng', 'Population', 
+                       'Area', 'TimeZone', 'Job', 'Marital', 'PaymentMethod')
+
+# Remove the specified columns:
+mydata <- mydata[, -which(names(mydata) %in% columns_to_remove)]
+
+
+# Changing Column Names of Ordinal Data:
+
+colnames(mydata)[colnames(mydata) == 'Item1'] <- 'TimelyResponse'
+colnames(mydata)[colnames(mydata) == 'Item2'] <- 'TimelyFixes'
+colnames(mydata)[colnames(mydata) == 'Item3'] <- 'TimelyReplacements'
+colnames(mydata)[colnames(mydata) == 'Item4'] <- 'Reliability'
+colnames(mydata)[colnames(mydata) == 'Item5'] <- 'Options'
+colnames(mydata)[colnames(mydata) == 'Item6'] <- 'RespectfulResponse'
+colnames(mydata)[colnames(mydata) == 'Item7'] <- 'CourtExchange'
+colnames(mydata)[colnames(mydata) == 'Item8'] <- 'EvidenceActiveListening'
+
+str(mydata)
+
+# Creating Dummy Variables for Categorical Data
+
+mydata$DummyGender <- ifelse(mydata$Gender == 'Male', 1, 0)
+mydata$DummyChurn <- ifelse(mydata$Churn == 'Yes', 1, 0)
+mydata$DummyTechie <- ifelse(mydata$Techie == 'Yes', 1, 0)
+mydata$DummyContract <- ifelse(mydata$Contract == 'Two Year', 1, 0)
+mydata$DummyPort_modem <- ifelse(mydata$Port_modem == 'Yes', 1, 0)
+mydata$DummyTablet <- ifelse(mydata$Tablet == 'Yes', 1, 0)
+mydata$DummyInternetService <- ifelse(mydata$InternetService == 'Fiber Optic', 1, 0)
+mydata$DummyPhone <- ifelse(mydata$Phone == 'Yes', 1, 0)
+mydata$DummyMultiple <- ifelse(mydata$Multiple == 'Yes', 1, 0)
+mydata$DummyOnlineSecurity <- ifelse(mydata$OnlineSecurity == 'Yes', 1, 0)
+mydata$DummyOnlineBackup <- ifelse(mydata$OnlineBackup == 'Yes', 1, 0)
+mydata$DummyDeviceProtection <- ifelse(mydata$DeviceProtection == 'Yes', 1, 0)
+mydata$DummyTechSupport <- ifelse(mydata$TechSupport == 'Yes', 1, 0)
+mydata$DummyStreamingTV <- ifelse(mydata$StreamingTV == 'Yes', 1, 0)
+mydata$DummyStreamingMovies <- ifelse(mydata$StreamingMovies == 'Yes', 1, 0)
+mydata$DummyPaperlessBilling <- ifelse(mydata$PaperlessBilling == 'Yes', 1, 0)
+
+# Dropping all old categorical variables:
+
+remove_original_categories <- c('Gender', 'Churn', 'Techie', 'Contract', 'Port_modem',
+                                'Tablet', 'InternetService', 'Phone', 'Multiple', 
+                                'OnlineSecurity', 'OnlineBackup', 'DeviceProtection',
+                                'TechSupport', 'StreamingTV', 'StreamingMovies',
+                                'PaperlessBilling')
+
+mydata <- mydata[, -which(names(mydata) %in% remove_original_categories)]
+
+str(mydata)
+
+# Creating histograms for continuous variables by choosing variables first:
+selected_columns <- c('Children', 'Age', 'Income', 'Outage_sec_perweek', 'Email',
+                      'Contacts', 'Yearly_equip_failure', 'Tenure', 'MonthlyCharge',
+                      'Bandwidth_GB_Year')
+
+# Create the layout for multiple histograms in a visualization (2 rows, 5 columns):
+par(mfrow = c(2, 5))
+
+# Creating the histograms:
+for (col in selected_columns) {
+  hist(churn_df[[col]], main = col, xlab = col, col = "lightblue")
+}
+
+
+# Boxplot for variables to check for outliers:
+
+boxplot(mydata$Tenure, main = 'Boxplot for Tenure')$out
+boxplot(mydata$Bandwidth_GB_Year, main = 'Boxplot for Bandwidth_GB_Year')$out
+boxplot(mydata$MonthlyCharge, main = 'Boxplot for MonthlyCharge')$out
+
+
+
+# Summary of Independent Variables
+
+Churn_Summary <- ggplot(mydata, aes(x = DummyChurn)) +
+  geom_bar(position = 'dodge', stat = 'count', fill = 'lightblue') +
+  geom_text(aes(label = paste0(round(prop.table(after_stat(count)) * 100, 2), '%')), stat = 'count')
+Gender_Summary <- ggplot(mydata, aes(x = DummyGender)) +
+  geom_bar(position = 'dodge', stat = 'count', fill = 'lightblue') +
+  geom_text(aes(label = paste0(round(prop.table(after_stat(count)) * 100, 2), '%')), stat = 'count')
+Techie_Summary <- ggplot(mydata, aes(x = DummyTechie)) +
+  geom_bar(position = 'dodge', stat = 'count', fill = 'lightblue') +
+  geom_text(aes(label = paste0(round(prop.table(after_stat(count)) * 100, 2), '%')), stat = 'count')
+Port_modem_Summary <- ggplot(mydata, aes(x = DummyPort_modem)) +
+  geom_bar(position = 'dodge', stat = 'count', fill = 'lightblue') +
+  geom_text(aes(label = paste0(round(prop.table(after_stat(count)) * 100, 2), '%')), stat = 'count')
+Tablet_Summary <- ggplot(mydata, aes(x = DummyTablet)) +
+  geom_bar(position = 'dodge', stat = 'count', fill = 'lightblue') +
+  geom_text(aes(label = paste0(round(prop.table(after_stat(count)) * 100, 2), '%')), stat = 'count')
+Contract_Summary <- ggplot(mydata, aes(x = DummyContract)) +
+  geom_bar(position = 'dodge', stat = 'count', fill = 'lightblue') +
+  geom_text(aes(label = paste0(round(prop.table(after_stat(count)) * 100, 2), '%')), stat = 'count')
+
+PaperlessBilling_Summary <- ggplot(mydata, aes(x = DummyPaperlessBilling)) +
+  geom_bar(position = 'dodge', stat = 'count', fill = 'lightblue') +
+  geom_text(aes(label = paste0(round(prop.table(after_stat(count)) * 100, 2), '%')), stat = 'count')
+InternetService_Summary <- ggplot(mydata, aes(x = DummyInternetService)) +
+  geom_bar(position = 'dodge', stat = 'count', fill = 'lightblue') +
+  geom_text(aes(label = paste0(round(prop.table(after_stat(count)) * 100, 2), '%')), stat = 'count')
+Phone_Summary <- ggplot(mydata, aes(x = DummyPhone)) +
+  geom_bar(position = 'dodge', stat = 'count', fill = 'lightblue') +
+  geom_text(aes(label = paste0(round(prop.table(after_stat(count)) * 100, 2), '%')), stat = 'count')
+Multiple_Summary <- ggplot(mydata, aes(x = DummyMultiple)) +
+  geom_bar(position = 'dodge', stat = 'count', fill = 'lightblue') +
+  geom_text(aes(label = paste0(round(prop.table(after_stat(count)) * 100, 2), '%')), stat = 'count')
+OnlineSecruity_Summary <- ggplot(mydata, aes(x = DummyOnlineSecurity)) +
+  geom_bar(position = 'dodge', stat = 'count', fill = 'lightblue') +
+  geom_text(aes(label = paste0(round(prop.table(after_stat(count)) * 100, 2), '%')), stat = 'count')
+OnlineBackup_Summary <- ggplot(mydata, aes(x = DummyOnlineBackup)) +
+  geom_bar(position = 'dodge', stat = 'count', fill = 'lightblue') +
+  geom_text(aes(label = paste0(round(prop.table(after_stat(count)) * 100, 2), '%')), stat = 'count')
+
+DeviceProtection_Summary <- ggplot(mydata, aes(x = DummyDeviceProtection)) +
+  geom_bar(position = 'dodge', stat = 'count', fill = 'lightblue') +
+  geom_text(aes(label = paste0(round(prop.table(after_stat(count)) * 100, 2), '%')), stat = 'count')
+TechSupport_Summary <- ggplot(mydata, aes(x = DummyTechSupport)) +
+  geom_bar(position = 'dodge', stat = 'count', fill = 'lightblue') +
+  geom_text(aes(label = paste0(round(prop.table(after_stat(count)) * 100, 2), '%')), stat = 'count')
+StreamingTV_Summary <- ggplot(mydata, aes(x = DummyStreamingTV)) +
+  geom_bar(position = 'dodge', stat = 'count', fill = 'lightblue') +
+  geom_text(aes(label = paste0(round(prop.table(after_stat(count)) * 100, 2), '%')), stat = 'count')
+StreamingMovies_Summary <- ggplot(mydata, aes(x = DummyStreamingMovies)) +
+  geom_bar(position = 'dodge', stat = 'count', fill = 'lightblue') +
+  geom_text(aes(label = paste0(round(prop.table(after_stat(count)) * 100, 2), '%')), stat = 'count')
+
+grid.arrange(Churn_Summary, Gender_Summary, Techie_Summary, Port_modem_Summary, Tablet_Summary, Contract_Summary)
+grid.arrange(PaperlessBilling_Summary, InternetService_Summary, Phone_Summary, 
+             Multiple_Summary, OnlineSecruity_Summary, OnlineBackup_Summary)
+grid.arrange(OnlineBackup_Summary, DeviceProtection_Summary, TechSupport_Summary, StreamingTV_Summary, StreamingMovies_Summary)
+
+
+# .csv of data transformation
+
+write.csv(mydata, file = 'modified_dataset.csv', row.names = FALSE)
+
+# Create scatterplot x = Children, y = Tenure:
+
+sp1 <- ggplot(mydata, aes(x = Children, y = Tenure)) +
+  geom_point(color = 'red') +
+  labs(title = paste('Scatterplot of Children vs. Tenure\n', 
+                     'R-squared:', round(cor(mydata$Children, mydata$Tenure)^2, 3)), 
+       x = 'Children', 
+       y = 'Tenure') +
+  theme_minimal()
+
+# Create scatterplot x = Age, y = Tenure:
+
+sp2 <- ggplot(mydata, aes(x = Age, y = Tenure)) +
+  geom_point(color = 'red') +
+  labs(title = paste('Scatterplot of Age vs. Tenure\n', 
+                     'R-squared:', round(cor(mydata$Age, mydata$Tenure)^2, 3)), 
+       x = 'Age', 
+       y = 'Tenure') +
+  theme_minimal()
+
+# Create scatterplot x = Income, y = Tenure:
+
+sp3 <- ggplot(mydata, aes(x = Income, y = Tenure)) +
+  geom_point(color = 'red') +
+  labs(title = paste('Scatterplot of Income vs. Tenure\n', 
+                     'R-squared:', round(cor(mydata$Income, mydata$Tenure)^2, 3)), 
+       x = 'Income', 
+       y = 'Tenure') +
+  theme_minimal()
+
+
+# Create scatterplot x = Income, y = Tenure:
+
+sp4 <- ggplot(mydata, aes(x = Income, y = Tenure)) +
+  geom_point(color = 'red') +
+  labs(title = paste('Scatterplot of Income vs. Tenure\n', 
+                     'R-squared:', round(cor(mydata$Income, mydata$Tenure)^2, 3)), 
+       x = 'Income', 
+       y = 'Tenure') +
+  theme_minimal()
+
+# Create scatterplot x = Outage_sec_perweek , y = Tenure:
+
+sp5 <- ggplot(mydata, aes(x = Outage_sec_perweek, y = Tenure)) +
+  geom_point(color = 'red') +
+  labs(title = paste('Scatterplot of Outage_sec_perweek vs. Tenure\n', 
+                     'R-squared:', round(cor(mydata$Outage_sec_perweek, mydata$Tenure)^2, 3)), 
+       x = 'Outage_sec_perweek', 
+       y = 'Tenure') +
+  theme_minimal()
+
+
+# Create scatterplot x = Bandwidth_GB_Year , y = Tenure:
+
+sp6 <- ggplot(mydata, aes(x = Bandwidth_GB_Year, y = Tenure)) +
+  geom_point(color = 'red') +
+  labs(title = paste('Scatterplot of Bandwidth_GB_Year vs. Tenure\n', 
+                     'R-squared:', round(cor(mydata$Bandwidth_GB_Year, mydata$Tenure)^2, 3)), 
+       x = 'Bandwidth_GB_Year', 
+       y = 'Tenure') +
+  theme_minimal()
+
+# Create scatterplot x = Email , y = Tenure:
+
+sp7 <- ggplot(mydata, aes(x = Email, y = Tenure)) +
+  geom_point(color = 'red') +
+  labs(title = paste('Scatterplot of Email vs. Tenure\n', 
+                     'R-squared:', round(cor(mydata$Email, mydata$Tenure)^2, 3)), 
+       x = 'Email', 
+       y = 'Tenure') +
+  theme_minimal()
+
+
+# Create scatterplot x = Contacts , y = Tenure:
+
+sp8 <- ggplot(mydata, aes(x = Contacts, y = Tenure)) +
+  geom_point(color = 'red') +
+  labs(title = paste('Scatterplot of Contacts vs. Tenure\n', 
+                     'R-squared:', round(cor(mydata$Contacts, mydata$Tenure)^2, 3)), 
+       x = 'Contacts', 
+       y = 'Tenure') +
+  theme_minimal()
+
+# Create scatterplot x = Yearly_equip_failure, y = Tenure:
+
+sp9 <- ggplot(mydata, aes(x = Yearly_equip_failure, y = Tenure)) +
+  geom_point(color = 'red') +
+  labs(title = paste('Scatterplot of Yearly_equip_failure vs. Tenure\n', 
+                     'R-squared:', round(cor(mydata$Yearly_equip_failure, mydata$Tenure)^2, 3)), 
+       x = 'Yearly_equip_failure', 
+       y = 'Tenure') +
+  theme_minimal()
+
+# Create scatterplot x = MonthlyCharge, y = Tenure:
+
+sp10 <- ggplot(mydata, aes(x = MonthlyCharge, y = Tenure)) +
+  geom_point(color = 'red') +
+  labs(title = paste('Scatterplot of MonthlyCharge vs. Tenure\n', 
+                     'R-squared:', round(cor(mydata$MonthlyCharge, mydata$Tenure)^2, 3)), 
+       x = 'MonthlyCharge', 
+       y = 'Tenure') +
+  theme_minimal()
+
+# Create scatterplot x = TimelyResponse, y = Tenure:
+
+sp11 <- ggplot(mydata, aes(x = TimelyResponse, y = Tenure)) +
+  geom_point(color = 'red') +
+  labs(title = paste('Scatterplot of TimelyResponse vs. Tenure\n', 
+                     'R-squared:', round(cor(mydata$TimelyResponse, mydata$Tenure)^2, 3)), 
+       x = 'TimelyResponse', 
+       y = 'Tenure') +
+  theme_minimal()
+
+# Create scatterplot x = TimelyFixes, y = Tenure:
+
+sp12 <- ggplot(mydata, aes(x = TimelyFixes, y = Tenure)) +
+  geom_point(color = 'red') +
+  labs(title = paste('Scatterplot of TimelyFixes vs. Tenure\n', 
+                     'R-squared:', round(cor(mydata$TimelyResponse, mydata$Tenure)^2, 3)), 
+       x = 'TimelyFixes', 
+       y = 'Tenure') +
+  theme_minimal()
+
+# Create scatterplot x = TimelyReplacements , y = Tenure:
+
+sp13 <- ggplot(mydata, aes(x = TimelyReplacements, y = Tenure)) +
+  geom_point(color = 'red') +
+  labs(title = paste('Scatterplot of TimelyReplacements vs. Tenure\n', 
+                     'R-squared:', round(cor(mydata$TimelyResponse, mydata$Tenure)^2, 3)), 
+       x = 'TimelyReplacements', 
+       y = 'Tenure') +
+  theme_minimal()
+
+# Create scatterplot x = Reliability , y = Tenure:
+
+sp14 <- ggplot(mydata, aes(x = Reliability, y = Tenure)) +
+  geom_point(color = 'red') +
+  labs(title = paste('Scatterplot of Reliability vs. Tenure\n', 
+                     'R-squared:', round(cor(mydata$TimelyResponse, mydata$Tenure)^2, 3)), 
+       x = 'Reliability', 
+       y = 'Tenure') +
+  theme_minimal()
+
+# Create scatterplot x = Options , y = Tenure:
+
+sp15 <- ggplot(mydata, aes(x = Options, y = Tenure)) +
+  geom_point(color = 'red') +
+  labs(title = paste('Scatterplot of Options vs. Tenure\n', 
+                     'R-squared:', round(cor(mydata$Options, mydata$Tenure)^2, 3)), 
+       x = 'Options', 
+       y = 'Tenure') +
+  theme_minimal()
+
+
+# Create scatterplot x = RespectfulResponse , y = Tenure:
+
+sp16 <- ggplot(mydata, aes(x = RespectfulResponse, y = Tenure)) +
+  geom_point(color = 'red') +
+  labs(title = paste('Scatterplot of RespectfulResponse vs. Tenure\n', 
+                     'R-squared:', round(cor(mydata$RespectfulResponse, mydata$Tenure)^2, 3)), 
+       x = 'RespectfulResponse', 
+       y = 'Tenure') +
+  theme_minimal()
+
+# Create scatterplot x = CourtExchange, y = Tenure:
+
+sp17 <- ggplot(mydata, aes(x = CourtExchange, y = Tenure)) +
+  geom_point(color = 'red') +
+  labs(title = paste('Scatterplot of CourtExchange vs. Tenure\n', 
+                     'R-squared:', round(cor(mydata$CourtExchange, mydata$Tenure)^2, 3)), 
+       x = 'CourtExchange', 
+       y = 'Tenure') +
+  theme_minimal()
+
+# Create scatterplot x = EvidenceActiveListening, y = Tenure:
+
+sp18 <- ggplot(mydata, aes(x = EvidenceActiveListening, y = Tenure)) +
+  geom_point(color = 'red') +
+  labs(title = paste('Scatterplot of EvidenceActiveListening vs. Tenure\n', 
+                     'R-squared:', round(cor(mydata$EvidenceActiveListening, mydata$Tenure)^2, 3)), 
+       x = 'EvidenceActiveListening', 
+       y = 'Tenure') +
+  theme_minimal()
+
+
+grid.arrange(sp1, sp2, sp3, sp4, sp5, sp6)
+grid.arrange(sp7, sp8, sp9, sp10, sp11, sp12)
+grid.arrange(sp13, sp14, sp15, sp16, sp17, sp18)
+
+# Using all independent variable minus Tenure:
+
+lm_all_variables <- lm(Tenure ~ ., data = mydata)
+ 
+# Printing out the results:
+
+print(lm_all_variables)
+
+# Summary of lm() model:
+
+summary(lm_all_variables)
+
+
+# Reducing the model backwards
+reduced_model <- step(lm_all_variables, direction = "backward")
+
+print(reduced_model)
+
+summary(reduced_model)
+
+
+# Listing variables to go into heatmap
+heatmap_data <- mydata[, c('Tenure', 'Children', 'Age', 'Contacts', 'MonthlyCharge', 'Bandwidth_GB_Year',
+                           'TimelyReplacements', 'EvidenceActiveListening', 'DummyGender', 'DummyChurn',
+                           'DummyContract', 'DummyInternetService', 'DummyMultiple', 'DummyOnlineSecurity',
+                           'DummyOnlineBackup', 'DummyDeviceProtection', 'DummyTechSupport',
+                           'DummyStreamingTV', 'DummyStreamingMovies')]
+
+# Calculate correlation matrix
+cor_matrix <- cor(heatmap_data)
+
+# Create a heatmap using gplots
+heatmap.2(cor_matrix,
+          trace = "none",  # Remove dendrogram traces
+          col = colorRampPalette(c("blue", "white", "red"))(100),  # Color palette
+          main = "Correlation Heatmap",
+          key.title = NA,  # Remove color key title
+          cexRow = 0.9, cexCol = 0.9,  # Adjust label size
+          margins = c(10, 10),  # Add some margin space
+          dendrogram = "none"  # Remove both row and column dendrograms
+)
+
+
+# Reduced heatmap
+
+heatmap_data_2 <- mydata[, c('Tenure', 'Children', 'MonthlyCharge', 'Bandwidth_GB_Year', 'DummyOnlineSecurity')]
+
+cor_matrix_2 <- cor(heatmap_data_2)
+
+heatmap.2(cor_matrix_2,
+          trace = "none",  # Remove dendrogram traces
+          col = colorRampPalette(c("blue", "white", "red"))(100),  # Color palette
+          main = "Correlation Heatmap",
+          key.title = NA,  # Remove color key title
+          cexRow = 0.9, cexCol = 0.9,  # Adjust label size
+          margins = c(10, 10),  # Add some margin space
+          dendrogram = "none"  # Remove both row and column dendrograms
+)
+
+
+# Adding intercept mydata
+mydata$intercept <- 1
+
+# Fit reduced OLS multiple regression
+lm_tenure_reduced <- lm(Tenure ~ Children + Bandwidth_GB_Year + DummyChurn + DummyOnlineSecurity + intercept, data = mydata)
+
+
+# Print summary
+summary(lm_tenure_reduced)
+
+# Checking Tenure and Bandwidth
+
+lm_tenure_bandwidth <- lm(Tenure ~ Bandwidth_GB_Year + intercept, data = mydata)
+
+summary(lm_tenure_bandwidth)
+
+# Residual Plot:
+par(mfrow = c(1, 1))
+
+# Create the residuals vs. fitted values plot
+plot(lm_tenure_reduced, which = 1, col = "blue", pch = 16,
+     main = "Residuals vs. Fitted Values")
+
+# Add labels for readability
+title(main = "Residuals vs. Fitted Values", xlab = "Fitted Values", ylab = "Residuals")
+
+
+
+# Residual Plot Further Reduced (Not final but included)
+
+par(mfrow = c(1, 1))
+
+# Create the residuals vs. fitted values plot with customizations
+plot(lm_tenure_bandwidth, which = 1, col = "blue", pch = 16,
+     main = "Residuals vs. Fitted Values")
+
+# Add labels for readability
+title(main = "Residuals vs. Fitted Values", xlab = "Fitted Values", ylab = "Residuals")
+
+
+#------------------------------------------------------------------------------------------------------------
+
+
+# Below are for easy access to the models
+
+
+# Using all independent variable minus Tenure:
+
+lm_all_variables <- lm(Tenure ~ ., data = mydata)
+
+# Printing out the results:
+
+print(lm_all_variables)
+
+# Summary of lm() model:
+
+summary(lm_all_variables)
+
+
+# Reducing the model backwards
+reduced_model <- step(lm_all_variables, direction = "backward")
+
+summary(reduced_model)
+
+
+
+# Adding intercept mydata
+mydata$intercept <- 1
+
+# Fit reduced OLS multiple regression
+lm_tenure_reduced <- lm(Tenure ~ Children + Bandwidth_GB_Year + DummyChurn + DummyOnlineSecurity + intercept, data = mydata)
+
+
+# Residual Plot:
+par(mfrow = c(1, 1))
+
+# Create the residuals vs. fitted values plot
+plot(lm_tenure_reduced, which = 1, col = "blue", pch = 16,
+     main = "Residuals vs. Fitted Values")
+
+# Add labels for readability
+title(main = "Residuals vs. Fitted Values", xlab = "Fitted Values", ylab = "Residuals")
+
+summary(lm_tenure_reduced)
+
+
+# The reduced model suggests a few statistical and practical significance. 
+# First, the p-values (< 2.2e-16) is very small for the F-Statistic. 
+# This indicates at least one of the predictor variables is significantly correlated to the dependent variable (Tenure). 
+# Based on the heatmap and reduced model, it may be assumed Bandwidth_GB_Year has a significant impact. 
+# This is even more evident with the high t-value Bandwidth_GB_Year has and its associated small p-value. 
+
+# t-value for a coefficient is very high and the associated p-value is very small suggests 
+# that the corresponding variable (Bandwidth) is statistically significant in predicting the response variable (Tenure).
+# Suffice it to say, there is significance within the model.
+
+
+
+
+
+# The End
