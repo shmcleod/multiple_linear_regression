@@ -11,6 +11,6 @@ Modified Dataset after cleaning:
 
 (https://github.com/shmcleod/multiple_regression/files/13623099/modified_dataset.csv)
 
-R Codding associated with the Multiple Regression:
+R Coding associated with the Multiple Regression:
 
 (https://github.com/shmcleod/multiple_linear_regression/blob/main/r-code)
